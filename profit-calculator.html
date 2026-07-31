@@ -853,8 +853,10 @@
 
   // ---- 楽天市場API連携 ----
   const RAKUTEN_APP_ID = '7d9b9ab8-5f6d-4f5f-8f13-485f74d9d3b9';
+  const RAKUTEN_ACCESS_KEY = 'pk_rja7gdid2U13cxyOCFxDvXcf2fa82ApF75pCxqNQncY';
+  const RAKUTEN_ENDPOINT = 'https://openapi.rakuten.co.jp/ichibams/api/IchibaItem/Search/20260701';
 
-  function searchRakuten() {
+  async function searchRakuten() {
     const keyword = $('researchKeyword').value.trim();
     if (!keyword) {
       alert('検索キーワードを入力してください。');
@@ -863,36 +865,30 @@
     const resultsEl = $('rakutenResults');
     resultsEl.innerHTML = '<p class="research-note">検索中...</p>';
 
-    const callbackName = 'rakutenCallback_' + Date.now();
-    window[callbackName] = (data) => {
-      renderRakutenResults(data);
-      delete window[callbackName];
-      script.remove();
-    };
-
     const params = new URLSearchParams({
-      applicationId: RAKUTEN_APP_ID,
-      keyword: keyword,
       format: 'json',
+      keyword: keyword,
+      genreId: '0',
       hits: '10',
-      callback: callbackName
+      applicationId: RAKUTEN_APP_ID,
+      accessKey: RAKUTEN_ACCESS_KEY
     });
 
-    const script = document.createElement('script');
-    script.src = `https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601?${params.toString()}`;
-    script.onerror = () => {
+    try {
+      const res = await fetch(`${RAKUTEN_ENDPOINT}?${params.toString()}`);
+      const data = await res.json();
+      renderRakutenResults(data);
+    } catch (e) {
       resultsEl.innerHTML = '<p class="research-note">検索に失敗しました。通信環境を確認し、しばらくしてから再度お試しください。</p>';
-      delete window[callbackName];
-    };
-    document.body.appendChild(script);
+    }
   }
 
   function renderRakutenResults(data) {
     const resultsEl = $('rakutenResults');
     resultsEl.innerHTML = '';
 
-    if (data.error) {
-      resultsEl.innerHTML = `<p class="research-note">エラー: ${data.error_description || data.error}</p>`;
+    if (data.errors) {
+      resultsEl.innerHTML = `<p class="research-note">エラー: ${data.errors.errorMessage || data.errors.errorCode}</p>`;
       return;
     }
 
