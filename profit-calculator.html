@@ -348,6 +348,53 @@
     margin: 14px 0 4px;
     line-height: 1.6;
   }
+  .rakuten-results {
+    margin-top: 12px;
+  }
+  .rakuten-results .research-note { margin: 8px 0; }
+  .rakuten-item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .rakuten-item:last-child { border-bottom: none; }
+  .rakuten-item img {
+    width: 64px;
+    height: 64px;
+    object-fit: contain;
+    background: var(--bg);
+    border-radius: 8px;
+    flex-shrink: 0;
+  }
+  .rakuten-item .info {
+    min-width: 0;
+    flex: 1;
+  }
+  .rakuten-item .name {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    text-decoration: none;
+    line-height: 1.4;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .rakuten-item .name:hover { text-decoration: underline; }
+  .rakuten-item .price {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 15px;
+    margin-top: 4px;
+  }
+  .rakuten-item .shop {
+    color: var(--sub);
+    font-size: 11px;
+    margin-top: 2px;
+  }
   footer {
     text-align: center;
     color: var(--sub);
@@ -518,6 +565,12 @@
       <a class="platform-link yahoo" id="linkYahoo" href="#" target="_blank" rel="noopener"><span class="icon">🔨</span>ヤフオク</a>
     </div>
     <p class="research-note">キーワードを入力してボタンを押すと、それぞれのサイトの検索結果ページが新しいタブで開きます。価格や在庫状況を見比べて仕入れ判断にお使いください。API連携ではなく各サイトへのリンクのため、結果はサイト側の最新表示に準じます。</p>
+  </div>
+
+  <div class="card">
+    <h2>🛒 楽天市場の商品をアプリ内で見る</h2>
+    <button class="btn btn-primary" id="rakutenSearchBtn" type="button">この内容で楽天市場を検索する</button>
+    <div class="rakuten-results" id="rakutenResults"></div>
   </div>
   </section>
 
@@ -797,6 +850,95 @@
     $('researchKeyword').value = $('productName').value.trim();
     updateResearchLinks();
   });
+
+  // ---- 楽天市場API連携 ----
+  const RAKUTEN_APP_ID = '7d9b9ab8-5f6d-4f5f-8f13-485f74d9d3b9';
+
+  function searchRakuten() {
+    const keyword = $('researchKeyword').value.trim();
+    if (!keyword) {
+      alert('検索キーワードを入力してください。');
+      return;
+    }
+    const resultsEl = $('rakutenResults');
+    resultsEl.innerHTML = '<p class="research-note">検索中...</p>';
+
+    const callbackName = 'rakutenCallback_' + Date.now();
+    window[callbackName] = (data) => {
+      renderRakutenResults(data);
+      delete window[callbackName];
+      script.remove();
+    };
+
+    const params = new URLSearchParams({
+      applicationId: RAKUTEN_APP_ID,
+      keyword: keyword,
+      format: 'json',
+      hits: '10',
+      callback: callbackName
+    });
+
+    const script = document.createElement('script');
+    script.src = `https://app.rakuten.co.jp/services/api/IchibaItem/Search/20220601?${params.toString()}`;
+    script.onerror = () => {
+      resultsEl.innerHTML = '<p class="research-note">検索に失敗しました。通信環境を確認し、しばらくしてから再度お試しください。</p>';
+      delete window[callbackName];
+    };
+    document.body.appendChild(script);
+  }
+
+  function renderRakutenResults(data) {
+    const resultsEl = $('rakutenResults');
+    resultsEl.innerHTML = '';
+
+    if (data.error) {
+      resultsEl.innerHTML = `<p class="research-note">エラー: ${data.error_description || data.error}</p>`;
+      return;
+    }
+
+    const items = (data.Items || []).map(entry => entry.Item);
+    if (items.length === 0) {
+      resultsEl.innerHTML = '<p class="research-note">該当する商品が見つかりませんでした。</p>';
+      return;
+    }
+
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'rakuten-item';
+
+      const img = document.createElement('img');
+      const imageUrl = item.mediumImageUrls && item.mediumImageUrls[0] && item.mediumImageUrls[0].imageUrl;
+      img.src = imageUrl || '';
+      img.alt = item.itemName;
+      div.appendChild(img);
+
+      const info = document.createElement('div');
+      info.className = 'info';
+
+      const nameLink = document.createElement('a');
+      nameLink.className = 'name';
+      nameLink.href = item.itemUrl;
+      nameLink.target = '_blank';
+      nameLink.rel = 'noopener';
+      nameLink.textContent = item.itemName;
+      info.appendChild(nameLink);
+
+      const price = document.createElement('div');
+      price.className = 'price';
+      price.textContent = yen(item.itemPrice);
+      info.appendChild(price);
+
+      const shop = document.createElement('div');
+      shop.className = 'shop';
+      shop.textContent = item.shopName + (item.reviewCount ? `　レビュー${item.reviewCount}件（★${item.reviewAverage}）` : '');
+      info.appendChild(shop);
+
+      div.appendChild(info);
+      resultsEl.appendChild(div);
+    });
+  }
+
+  $('rakutenSearchBtn').addEventListener('click', searchRakuten);
 
   applyPlatformDefaults();
   renderLedger();
