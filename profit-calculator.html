@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>せどり利益計算機</title>
+<style>
+  :root {
+    --bg: #f0f2f6;
+    --card-bg: #ffffff;
+    --text: #1a1a1a;
+    --sub: #6b7280;
+    --border: #e5e7eb;
+    --accent: #2563eb;
+    --accent-rgb: 37, 99, 235;
+    --profit-pos: #16a34a;
+    --profit-neg: #dc2626;
+    --shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 6px rgba(16, 24, 40, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d0f14;
+      --card-bg: #1b1e26;
+      --text: #f0f1f3;
+      --sub: #9aa1ac;
+      --border: #2c3038;
+      --accent: #5b8def;
+      --accent-rgb: 91, 141, 239;
+      --profit-pos: #4ade80;
+      --profit-neg: #f87171;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 2px 8px rgba(0, 0, 0, .25);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0 16px 64px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Hiragino Sans", "Yu Gothic", system-ui, -apple-system, sans-serif;
+    display: flex;
+    justify-content: center;
+  }
+  .wrap {
+    width: 100%;
+    max-width: 520px;
+  }
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    margin: 0 -16px 18px;
+    padding: 16px 16px 0;
+    background: var(--bg);
+  }
+  h1 {
+    font-size: 19px;
+    margin: 0 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .lead {
+    color: var(--sub);
+    font-size: 13px;
+    margin: 0 0 16px;
+  }
+  .tabs {
+    display: flex;
+    gap: 6px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 4px;
+  }
+  .tab-btn {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--sub);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background .15s, color .15s;
+  }
+  .tab-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+  .tab-section { display: none; }
+  .tab-section.active { display: block; }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 18px 8px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow);
+  }
+  .card h2 {
+    font-size: 14px;
+    margin: 0 0 14px;
+    color: var(--sub);
+    font-weight: 600;
+    letter-spacing: .02em;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .field {
+    margin-bottom: 14px;
+  }
+  .field label {
+    display: block;
+    font-size: 13px;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+  .field .hint {
+    color: var(--sub);
+    font-weight: 400;
+    font-size: 12px;
+  }
+  .row {
+    display: flex;
+    gap: 10px;
+  }
+  .row .field { flex: 1; }
+  input[type="number"], input[type="text"], select {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+  }
+  input[type="number"]:focus, input[type="text"]:focus, select:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+  }
+  .platform-fee-row {
+    display: flex;
+    gap: 10px;
+  }
+  .result-card {
+    position: sticky;
+    bottom: 12px;
+    border-top: 3px solid var(--accent);
+  }
+  .headline {
+    text-align: center;
+    padding: 14px 0 10px;
+    margin: 0 -18px 4px;
+    background: rgba(var(--accent-rgb), .07);
+  }
+  .headline .amount {
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+  .headline .amount.pos { color: var(--profit-pos); }
+  .headline .amount.neg { color: var(--profit-neg); }
+  .headline .sub {
+    color: var(--sub);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  .metrics {
+    display: flex;
+    gap: 8px;
+    margin: 10px 0 14px;
+  }
+  .metric {
+    flex: 1;
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+  .metric .val {
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .metric .label {
+    font-size: 11px;
+    color: var(--sub);
+    margin-top: 2px;
+  }
+  .breakdown {
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+    margin-bottom: 8px;
+  }
+  .breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    padding: 5px 0;
+    color: var(--text);
+  }
+  .breakdown-row.total {
+    border-top: 1px solid var(--border);
+    margin-top: 4px;
+    padding-top: 8px;
+    font-weight: 700;
+  }
+  .breakdown-row .val.neg { color: var(--profit-neg); }
+  .btn {
+    display: inline-block;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s, transform .1s;
+  }
+  .btn:hover { opacity: .88; }
+  .btn:active { transform: scale(.98); }
+  .btn-primary {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    margin-top: 4px;
+  }
+  .btn-secondary {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-danger {
+    background: var(--bg);
+    color: var(--profit-neg);
+    border: 1px solid var(--border);
+  }
+  .ledger-summary {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .ledger-summary .metric { flex: 1; }
+  .table-scroll {
+    overflow-x: auto;
+    margin: 0 -18px;
+    padding: 0 18px;
+  }
+  .ledger-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 560px;
+  }
+  .ledger-table th {
+    text-align: left;
+    color: var(--sub);
+    font-weight: 600;
+    font-size: 11px;
+    padding: 0 8px 8px 0;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .ledger-table td {
+    padding: 8px 8px 8px 0;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .ledger-table td.name {
+    white-space: normal;
+    min-width: 120px;
+  }
+  .ledger-table .profit-val.pos { color: var(--profit-pos); font-weight: 700; }
+  .ledger-table .profit-val.neg { color: var(--profit-neg); font-weight: 700; }
+  .ledger-table select {
+    padding: 4px 6px;
+    font-size: 12px;
+    width: auto;
+  }
+  .ledger-table .delete-btn {
+    background: none;
+    border: none;
+    color: var(--sub);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 2px 6px;
+  }
+  .ledger-empty {
+    color: var(--sub);
+    font-size: 13px;
+    text-align: center;
+    padding: 12px 0;
+  }
+  .ledger-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .ledger-actions .btn { flex: 1; }
+  .research-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+  .research-input-row input { flex: 1; }
+  .link-copy-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 4px 0 12px;
+  }
+  .platform-links {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .platform-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 10px;
+    text-decoration: none;
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border-left: 4px solid var(--accent);
+    transition: opacity .15s, transform .1s;
+  }
+  .platform-link:hover { opacity: .85; }
+  .platform-link:active { transform: scale(.98); }
+  .platform-link .icon { font-size: 18px; }
+  .platform-link.amazon { border-left-color: #ff9900; }
+  .platform-link.rakuten { border-left-color: #bf0000; }
+  .platform-link.mercari { border-left-color: #ff1f5f; }
+  .platform-link.yahoo { border-left-color: #7b3fe4; }
+  .research-note {
+    color: var(--sub);
+    font-size: 12px;
+    margin: 14px 0 4px;
+    line-height: 1.6;
+  }
+  footer {
+    text-align: center;
+    color: var(--sub);
+    font-size: 11px;
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <h1>📊 せどり利益計算機</h1>
+    <p class="lead">仕入れ値・販売価格を入力すると、手数料や送料を差し引いた実際の利益がその場で分かります。</p>
+    <nav class="tabs">
+      <button class="tab-btn active" id="tabCalcBtn" type="button" data-tab="calc">🧮 計算機</button>
+      <button class="tab-btn" id="tabLedgerBtn" type="button" data-tab="ledger">📒 台帳</button>
+      <button class="tab-btn" id="tabResearchBtn" type="button" data-tab="research">🔍 リサーチ</button>
+    </nav>
+  </div>
+
+  <section class="tab-section active" id="calcSection">
+  <div class="card">
+    <h2>📥 仕入れ情報</h2>
+    <div class="field">
+      <label for="productName">商品名<span class="hint"> 任意・台帳に登録するときの名前になります</span></label>
+      <input type="text" id="productName" placeholder="例: ○○フィギュア">
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="costPrice">仕入れ単価（円）</label>
+        <input type="number" id="costPrice" inputmode="decimal" placeholder="例: 1000" min="0">
+      </div>
+      <div class="field">
+        <label for="qty">個数</label>
+        <input type="number" id="qty" inputmode="numeric" value="1" min="1">
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="acquireCost">仕入れ送料・交通費（合計・円）<span class="hint"> 任意</span></label>
+        <input type="number" id="acquireCost" inputmode="decimal" placeholder="例: 0" min="0">
+      </div>
+      <div class="field">
+        <label for="source">仕入れ先<span class="hint"> 任意</span></label>
+        <input type="text" id="source" placeholder="例: ブックオフ">
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>🏷️ 販売情報</h2>
+    <div class="field">
+      <label for="platform">出品先</label>
+      <select id="platform">
+        <option value="amazon_fba" data-fee="15" data-ship="350">Amazon（FBA発送）</option>
+        <option value="amazon_self" data-fee="15" data-ship="0">Amazon（自己発送）</option>
+        <option value="mercari" data-fee="10" data-ship="0">メルカリ</option>
+        <option value="yahoo" data-fee="10" data-ship="0">ヤフオク</option>
+        <option value="manual" data-fee="0" data-ship="0">その他（手数料を自分で入力）</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="sellPrice">販売単価（円）</label>
+      <input type="number" id="sellPrice" inputmode="decimal" placeholder="例: 2500" min="0">
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="feeRate">販売手数料率（％）</label>
+        <input type="number" id="feeRate" inputmode="decimal" step="0.1" min="0">
+      </div>
+      <div class="field">
+        <label for="shipCost">発送コスト（1個あたり・円）</label>
+        <input type="number" id="shipCost" inputmode="decimal" min="0">
+      </div>
+    </div>
+    <div class="field">
+      <label for="otherCost">梱包資材・その他経費（合計・円）<span class="hint"> 任意</span></label>
+      <input type="number" id="otherCost" inputmode="decimal" placeholder="例: 0" min="0">
+    </div>
+  </div>
+
+  <div class="card result-card">
+    <div class="headline">
+      <div class="amount" id="profitAmount">¥0</div>
+      <div class="sub">利益（<span id="qtyLabel">1</span>個の合計）</div>
+    </div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="val" id="profitRate">0%</div>
+        <div class="label">利益率</div>
+      </div>
+      <div class="metric">
+        <div class="val" id="roi">0%</div>
+        <div class="label">ROI（仕入れ額比）</div>
+      </div>
+      <div class="metric">
+        <div class="val" id="breakeven">¥0</div>
+        <div class="label">損益分岐 販売単価</div>
+      </div>
+    </div>
+    <div class="breakdown">
+      <div class="breakdown-row"><span>売上合計</span><span class="val" id="bdSales">¥0</span></div>
+      <div class="breakdown-row"><span>▲ 販売手数料</span><span class="val neg" id="bdFee">¥0</span></div>
+      <div class="breakdown-row"><span>▲ 発送コスト</span><span class="val neg" id="bdShip">¥0</span></div>
+      <div class="breakdown-row"><span>▲ 仕入れ総額</span><span class="val neg" id="bdCost">¥0</span></div>
+      <div class="breakdown-row"><span>▲ その他経費</span><span class="val neg" id="bdOther">¥0</span></div>
+      <div class="breakdown-row total"><span>利益</span><span class="val" id="bdProfit">¥0</span></div>
+    </div>
+    <button class="btn btn-primary" id="addToLedgerBtn" type="button">この内容を台帳に登録する</button>
+  </div>
+  </section>
+
+  <section class="tab-section" id="ledgerSection">
+  <div class="card" id="ledgerCard">
+    <h2>📒 仕入れ・在庫管理台帳</h2>
+    <div class="ledger-summary">
+      <div class="metric">
+        <div class="val" id="ledgerStockCount">0</div>
+        <div class="label">在庫あり</div>
+      </div>
+      <div class="metric">
+        <div class="val" id="ledgerListedCount">0</div>
+        <div class="label">出品中</div>
+      </div>
+      <div class="metric">
+        <div class="val" id="ledgerSoldProfit">¥0</div>
+        <div class="label">売却済み利益合計</div>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table class="ledger-table">
+        <thead>
+          <tr>
+            <th>商品名</th>
+            <th>仕入れ額</th>
+            <th>出品先</th>
+            <th>販売単価</th>
+            <th>利益</th>
+            <th>状態</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="ledgerBody"></tbody>
+      </table>
+    </div>
+    <p class="ledger-empty" id="ledgerEmpty">まだ登録された商品がありません。上の計算機で「この内容を台帳に登録する」を押すと、ここに追加されます。</p>
+    <div class="ledger-actions">
+      <button class="btn btn-secondary" id="exportCsvBtn" type="button">CSVで書き出す</button>
+      <button class="btn btn-danger" id="clearLedgerBtn" type="button">全件削除</button>
+    </div>
+  </div>
+  </section>
+
+  <section class="tab-section" id="researchSection">
+  <div class="card">
+    <h2>🔍 商品リサーチ</h2>
+    <div class="field">
+      <label for="researchKeyword">商品名・キーワード</label>
+      <div class="research-input-row">
+        <input type="text" id="researchKeyword" placeholder="例: ○○フィギュア">
+      </div>
+      <button class="link-copy-btn" id="copyProductNameBtn" type="button">↑ 計算機の商品名をコピー</button>
+    </div>
+    <div class="platform-links">
+      <a class="platform-link amazon" id="linkAmazon" href="#" target="_blank" rel="noopener"><span class="icon">📦</span>Amazon</a>
+      <a class="platform-link rakuten" id="linkRakuten" href="#" target="_blank" rel="noopener"><span class="icon">🛒</span>楽天市場</a>
+      <a class="platform-link mercari" id="linkMercari" href="#" target="_blank" rel="noopener"><span class="icon">📱</span>メルカリ</a>
+      <a class="platform-link yahoo" id="linkYahoo" href="#" target="_blank" rel="noopener"><span class="icon">🔨</span>ヤフオク</a>
+    </div>
+    <p class="research-note">キーワードを入力してボタンを押すと、それぞれのサイトの検索結果ページが新しいタブで開きます。価格や在庫状況を見比べて仕入れ判断にお使いください。API連携ではなく各サイトへのリンクのため、結果はサイト側の最新表示に準じます。</p>
+  </div>
+  </section>
+
+  <footer>手数料率・発送コストは目安です。実際の料金は各プラットフォームの最新情報をご確認ください。データはこの端末のブラウザ内にのみ保存されます。</footer>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const platformEl = $('platform');
+  const feeRateEl = $('feeRate');
+  const shipCostEl = $('shipCost');
+
+  function applyPlatformDefaults() {
+    const opt = platformEl.selectedOptions[0];
+    feeRateEl.value = opt.dataset.fee;
+    shipCostEl.value = opt.dataset.ship;
+    calculate();
+  }
+
+  function yen(n) {
+    const sign = n < 0 ? '-' : '';
+    return sign + '¥' + Math.abs(Math.round(n)).toLocaleString('ja-JP');
+  }
+
+  function pct(n) {
+    return (isFinite(n) ? n : 0).toFixed(1) + '%';
+  }
+
+  let lastCalc = null;
+
+  function calculate() {
+    const costPrice = parseFloat($('costPrice').value) || 0;
+    const qty = Math.max(1, parseInt($('qty').value) || 1);
+    const acquireCost = parseFloat($('acquireCost').value) || 0;
+
+    const sellPrice = parseFloat($('sellPrice').value) || 0;
+    const feeRate = parseFloat(feeRateEl.value) || 0;
+    const shipCost = parseFloat(shipCostEl.value) || 0;
+    const otherCost = parseFloat($('otherCost').value) || 0;
+
+    const sales = sellPrice * qty;
+    const feeAmount = sales * (feeRate / 100);
+    const shipTotal = shipCost * qty;
+    const costTotal = costPrice * qty + acquireCost;
+
+    const profit = sales - feeAmount - shipTotal - costTotal - otherCost;
+    const profitRate = sales > 0 ? (profit / sales) * 100 : 0;
+    const roi = costTotal > 0 ? (profit / costTotal) * 100 : 0;
+
+    // 損益分岐の販売単価: sales*(1-feeRate) = costTotal + shipTotal + otherCost を単価換算
+    const fixedCostPerUnit = (costTotal + shipTotal + otherCost) / qty;
+    const breakeven = feeRate < 100 ? fixedCostPerUnit / (1 - feeRate / 100) : Infinity;
+
+    lastCalc = { costPrice, qty, acquireCost, sellPrice, costTotal, profit };
+
+    $('qtyLabel').textContent = qty;
+
+    const amountEl = $('profitAmount');
+    amountEl.textContent = yen(profit);
+    amountEl.className = 'amount ' + (profit >= 0 ? 'pos' : 'neg');
+
+    $('profitRate').textContent = pct(profitRate);
+    $('roi').textContent = pct(roi);
+    $('breakeven').textContent = isFinite(breakeven) ? yen(breakeven) : '—';
+
+    $('bdSales').textContent = yen(sales);
+    $('bdFee').textContent = yen(-feeAmount);
+    $('bdShip').textContent = yen(-shipTotal);
+    $('bdCost').textContent = yen(-costTotal);
+    $('bdOther').textContent = yen(-otherCost);
+    $('bdProfit').textContent = yen(profit);
+  }
+
+  document.querySelectorAll('input').forEach(el => el.addEventListener('input', calculate));
+  platformEl.addEventListener('change', applyPlatformDefaults);
+
+  // ---- 仕入れ・在庫管理台帳 ----
+  const LEDGER_KEY = 'sedori_ledger_v1';
+  const STATUS_OPTIONS = ['在庫あり', '出品中', '売却済み'];
+
+  function loadLedger() {
+    try {
+      return JSON.parse(localStorage.getItem(LEDGER_KEY)) || [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveLedger(list) {
+    localStorage.setItem(LEDGER_KEY, JSON.stringify(list));
+  }
+
+  function addToLedger() {
+    if (!lastCalc || (lastCalc.costPrice <= 0 && lastCalc.sellPrice <= 0)) {
+      alert('仕入れ単価と販売単価を入力してから登録してください。');
+      return false;
+    }
+    const ledger = loadLedger();
+    ledger.unshift({
+      id: Date.now(),
+      name: $('productName').value.trim() || '(商品名未設定)',
+      costTotal: lastCalc.costTotal,
+      qty: lastCalc.qty,
+      source: $('source').value.trim(),
+      platform: platformEl.selectedOptions[0].textContent,
+      sellPrice: lastCalc.sellPrice,
+      profit: lastCalc.profit,
+      status: STATUS_OPTIONS[0],
+      date: new Date().toISOString().slice(0, 10)
+    });
+    saveLedger(ledger);
+    renderLedger();
+    return true;
+  }
+
+  function updateStatus(id, status) {
+    const ledger = loadLedger();
+    const entry = ledger.find(e => e.id === id);
+    if (entry) {
+      entry.status = status;
+      saveLedger(ledger);
+      renderLedger();
+    }
+  }
+
+  function removeEntry(id) {
+    saveLedger(loadLedger().filter(e => e.id !== id));
+    renderLedger();
+  }
+
+  function clearLedger() {
+    if (loadLedger().length === 0) return;
+    if (confirm('台帳の登録内容をすべて削除します。よろしいですか？')) {
+      saveLedger([]);
+      renderLedger();
+    }
+  }
+
+  function exportCsv() {
+    const ledger = loadLedger();
+    if (ledger.length === 0) {
+      alert('書き出す台帳データがありません。');
+      return;
+    }
+    const header = ['商品名', '仕入れ額(合計)', '個数', '仕入れ先', '出品先', '販売単価', '利益', '状態', '登録日'];
+    const rows = ledger.map(e => [
+      e.name, Math.round(e.costTotal), e.qty, e.source, e.platform,
+      e.sellPrice, Math.round(e.profit), e.status, e.date
+    ]);
+    const csv = [header, ...rows]
+      .map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\r\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `せどり台帳_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function renderLedger() {
+    const ledger = loadLedger();
+    const body = $('ledgerBody');
+    const empty = $('ledgerEmpty');
+    body.innerHTML = '';
+    empty.style.display = ledger.length === 0 ? 'block' : 'none';
+
+    let stockCount = 0, listedCount = 0, soldProfit = 0;
+
+    ledger.forEach(entry => {
+      if (entry.status === '在庫あり') stockCount++;
+      if (entry.status === '出品中') listedCount++;
+      if (entry.status === '売却済み') soldProfit += entry.profit;
+
+      const tr = document.createElement('tr');
+
+      const nameTd = document.createElement('td');
+      nameTd.className = 'name';
+      nameTd.textContent = entry.name;
+      tr.appendChild(nameTd);
+
+      const costTd = document.createElement('td');
+      costTd.textContent = yen(entry.costTotal) + `（${entry.qty}個）`;
+      tr.appendChild(costTd);
+
+      const platformTd = document.createElement('td');
+      platformTd.textContent = entry.platform;
+      tr.appendChild(platformTd);
+
+      const sellTd = document.createElement('td');
+      sellTd.textContent = yen(entry.sellPrice);
+      tr.appendChild(sellTd);
+
+      const profitTd = document.createElement('td');
+      profitTd.textContent = yen(entry.profit);
+      profitTd.className = 'profit-val ' + (entry.profit >= 0 ? 'pos' : 'neg');
+      tr.appendChild(profitTd);
+
+      const statusTd = document.createElement('td');
+      const select = document.createElement('select');
+      STATUS_OPTIONS.forEach(opt => {
+        const o = document.createElement('option');
+        o.value = opt;
+        o.textContent = opt;
+        if (opt === entry.status) o.selected = true;
+        select.appendChild(o);
+      });
+      select.addEventListener('change', () => updateStatus(entry.id, select.value));
+      statusTd.appendChild(select);
+      tr.appendChild(statusTd);
+
+      const delTd = document.createElement('td');
+      const delBtn = document.createElement('button');
+      delBtn.className = 'delete-btn';
+      delBtn.type = 'button';
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('click', () => {
+        if (confirm(`「${entry.name}」を台帳から削除しますか？`)) removeEntry(entry.id);
+      });
+      delTd.appendChild(delBtn);
+      tr.appendChild(delTd);
+
+      body.appendChild(tr);
+    });
+
+    $('ledgerStockCount').textContent = stockCount;
+    $('ledgerListedCount').textContent = listedCount;
+    $('ledgerSoldProfit').textContent = yen(soldProfit);
+  }
+
+  $('addToLedgerBtn').addEventListener('click', () => {
+    if (addToLedger()) switchTab('ledger');
+  });
+  $('exportCsvBtn').addEventListener('click', exportCsv);
+  $('clearLedgerBtn').addEventListener('click', clearLedger);
+
+  // ---- タブ切り替え ----
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    document.querySelectorAll('.tab-section').forEach(sec => {
+      sec.classList.toggle('active', sec.id === tab + 'Section');
+    });
+  }
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  // ---- 商品リサーチ ----
+  const RESEARCH_LINKS = {
+    linkAmazon: (kw) => `https://www.amazon.co.jp/s?k=${kw}`,
+    linkRakuten: (kw) => `https://search.rakuten.co.jp/search/mall/${kw}/`,
+    linkMercari: (kw) => `https://jp.mercari.com/search?keyword=${kw}`,
+    linkYahoo: (kw) => `https://auctions.yahoo.co.jp/search/search?p=${kw}`
+  };
+
+  function updateResearchLinks() {
+    const kw = encodeURIComponent($('researchKeyword').value.trim());
+    Object.entries(RESEARCH_LINKS).forEach(([id, build]) => {
+      $(id).href = kw ? build(kw) : '#';
+    });
+  }
+
+  document.querySelectorAll('.platform-link').forEach(a => {
+    a.addEventListener('click', (e) => {
+      if (!$('researchKeyword').value.trim()) {
+        e.preventDefault();
+        alert('検索キーワードを入力してください。');
+      }
+    });
+  });
+
+  $('researchKeyword').addEventListener('input', updateResearchLinks);
+  $('copyProductNameBtn').addEventListener('click', () => {
+    $('researchKeyword').value = $('productName').value.trim();
+    updateResearchLinks();
+  });
+
+  applyPlatformDefaults();
+  renderLedger();
+  updateResearchLinks();
+</script>
+</body>
+</html>
