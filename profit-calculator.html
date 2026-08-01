@@ -700,7 +700,17 @@
     $('bdProfit').textContent = yen(profit);
   }
 
-  document.querySelectorAll('input').forEach(el => el.addEventListener('input', calculate));
+  function stripLeadingZero(el) {
+    el.value = el.value.replace(/^0+(?=\d)/, '');
+  }
+
+  document.querySelectorAll('input[type="number"]').forEach(el => {
+    el.addEventListener('input', () => {
+      stripLeadingZero(el);
+      calculate();
+    });
+  });
+  document.querySelectorAll('input[type="text"]').forEach(el => el.addEventListener('input', calculate));
   platformEl.addEventListener('change', applyPlatformDefaults);
 
   // ---- 仕入れ・在庫管理台帳 ----
