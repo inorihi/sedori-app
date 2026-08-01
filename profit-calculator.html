@@ -285,49 +285,107 @@
     margin-bottom: 14px;
   }
   .ledger-summary .metric { flex: 1; }
-  .table-scroll {
-    overflow-x: auto;
-    margin: 0 -18px;
-    padding: 0 18px;
+  .ledger-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
   }
-  .ledger-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-    min-width: 560px;
+  .ledger-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    background: var(--bg);
   }
-  .ledger-table th {
-    text-align: left;
-    color: var(--sub);
-    font-weight: 600;
+  .ledger-item.editing {
+    background: rgba(var(--accent-rgb), .08);
+    border-color: rgba(var(--accent-rgb), .3);
+  }
+  .ledger-item-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .ledger-item-name {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.4;
+  }
+  .ledger-item-profit {
+    font-size: 17px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .ledger-item-profit.pos { color: var(--profit-pos); }
+  .ledger-item-profit.neg { color: var(--profit-neg); }
+  .ledger-item-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 10px;
+    margin-bottom: 12px;
+  }
+  .ledger-item-grid .label {
+    display: block;
     font-size: 11px;
-    padding: 0 8px 8px 0;
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
+    color: var(--sub);
+    margin-bottom: 2px;
   }
-  .ledger-table td {
-    padding: 8px 8px 8px 0;
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
+  .ledger-item-grid .val {
+    display: block;
+    font-size: 13px;
+    color: var(--text);
+    font-weight: 600;
   }
-  .ledger-table td.name {
-    white-space: normal;
-    min-width: 120px;
+  .ledger-item-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
   }
-  .ledger-table .profit-val.pos { color: var(--profit-pos); font-weight: 700; }
-  .ledger-table .profit-val.neg { color: var(--profit-neg); font-weight: 700; }
-  .ledger-table select {
-    padding: 4px 6px;
+  .ledger-item-bottom select {
+    padding: 6px 8px;
     font-size: 12px;
     width: auto;
   }
-  .ledger-table .delete-btn {
-    background: none;
-    border: none;
-    color: var(--sub);
+  .ledger-item .row-actions {
+    display: flex;
+    gap: 6px;
+  }
+  .ledger-item .edit-btn,
+  .ledger-item .delete-btn {
+    border: 1px solid var(--border);
+    border-radius: 6px;
     cursor: pointer;
-    font-size: 16px;
-    padding: 2px 6px;
+    font-size: 14px;
+    line-height: 1;
+    padding: 7px 9px;
+  }
+  .ledger-item .edit-btn {
+    color: var(--accent);
+    background: rgba(var(--accent-rgb), .1);
+    border-color: rgba(var(--accent-rgb), .3);
+  }
+  .ledger-item .delete-btn {
+    color: var(--profit-neg);
+    background: var(--card-bg);
+  }
+  .ledger-item .edit-btn:hover,
+  .ledger-item .delete-btn:hover { opacity: .8; }
+  .ledger-edit-panel {
+    display: none;
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg);
+  }
+  .ledger-edit-panel.active { display: block; }
+  .ledger-edit-title {
+    font-size: 13px;
+    font-weight: 600;
+    margin: 0 0 12px;
+    color: var(--text);
   }
   .ledger-empty {
     color: var(--sub);
@@ -575,23 +633,51 @@
         <div class="label">売却済み利益合計</div>
       </div>
     </div>
-    <div class="table-scroll">
-      <table class="ledger-table">
-        <thead>
-          <tr>
-            <th>商品名</th>
-            <th>仕入れ額</th>
-            <th>出品先</th>
-            <th>販売単価</th>
-            <th>利益</th>
-            <th>状態</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="ledgerBody"></tbody>
-      </table>
-    </div>
+    <div class="ledger-list" id="ledgerBody"></div>
     <p class="ledger-empty" id="ledgerEmpty">まだ登録された商品がありません。上の計算機で「この内容を台帳に登録する」を押すと、ここに追加されます。</p>
+
+    <div class="ledger-edit-panel" id="ledgerEditPanel">
+      <h3 class="ledger-edit-title">✎ 「<span id="ledgerEditName"></span>」を編集</h3>
+      <div class="field">
+        <label for="editName">商品名</label>
+        <input type="text" id="editName">
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="editCostTotal">仕入れ額（合計・円）</label>
+          <input type="number" id="editCostTotal" min="0">
+        </div>
+        <div class="field">
+          <label for="editQty">個数</label>
+          <input type="number" id="editQty" min="1">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="editSource">仕入れ先</label>
+          <input type="text" id="editSource">
+        </div>
+        <div class="field">
+          <label for="editPlatform">出品先</label>
+          <input type="text" id="editPlatform">
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="editSellPrice">販売単価（円）</label>
+          <input type="number" id="editSellPrice" min="0">
+        </div>
+        <div class="field">
+          <label for="editProfit">利益（円）</label>
+          <input type="number" id="editProfit">
+        </div>
+      </div>
+      <div class="ledger-actions">
+        <button class="btn btn-primary" id="editSaveBtn" type="button">保存する</button>
+        <button class="btn btn-secondary" id="editCancelBtn" type="button">キャンセル</button>
+      </div>
+    </div>
+
     <div class="ledger-actions">
       <button class="btn btn-secondary" id="exportCsvBtn" type="button">CSVで書き出す</button>
       <button class="btn btn-danger" id="clearLedgerBtn" type="button">全件削除</button>
@@ -762,6 +848,16 @@
     }
   }
 
+  function updateEntry(id, updates) {
+    const ledger = loadLedger();
+    const entry = ledger.find(e => e.id === id);
+    if (entry) {
+      Object.assign(entry, updates);
+      saveLedger(ledger);
+      renderLedger();
+    }
+  }
+
   function removeEntry(id) {
     saveLedger(loadLedger().filter(e => e.id !== id));
     renderLedger();
@@ -812,31 +908,49 @@
       if (entry.status === '出品中') listedCount++;
       if (entry.status === '売却済み') soldProfit += entry.profit;
 
-      const tr = document.createElement('tr');
+      const item = document.createElement('div');
+      item.className = 'ledger-item';
+      item.dataset.id = entry.id;
 
-      const nameTd = document.createElement('td');
-      nameTd.className = 'name';
-      nameTd.textContent = entry.name;
-      tr.appendChild(nameTd);
+      const top = document.createElement('div');
+      top.className = 'ledger-item-top';
 
-      const costTd = document.createElement('td');
-      costTd.textContent = yen(entry.costTotal) + `（${entry.qty}個）`;
-      tr.appendChild(costTd);
+      const nameEl = document.createElement('div');
+      nameEl.className = 'ledger-item-name';
+      nameEl.textContent = entry.name;
+      top.appendChild(nameEl);
 
-      const platformTd = document.createElement('td');
-      platformTd.textContent = entry.platform;
-      tr.appendChild(platformTd);
+      const profitEl = document.createElement('div');
+      profitEl.className = 'ledger-item-profit ' + (entry.profit >= 0 ? 'pos' : 'neg');
+      profitEl.textContent = yen(entry.profit);
+      top.appendChild(profitEl);
 
-      const sellTd = document.createElement('td');
-      sellTd.textContent = yen(entry.sellPrice);
-      tr.appendChild(sellTd);
+      item.appendChild(top);
 
-      const profitTd = document.createElement('td');
-      profitTd.textContent = yen(entry.profit);
-      profitTd.className = 'profit-val ' + (entry.profit >= 0 ? 'pos' : 'neg');
-      tr.appendChild(profitTd);
+      const grid = document.createElement('div');
+      grid.className = 'ledger-item-grid';
+      [
+        ['仕入れ額', yen(entry.costTotal) + `（${entry.qty}個）`],
+        ['出品先', entry.platform],
+        ['販売単価', yen(entry.sellPrice)],
+        ['登録日', entry.date]
+      ].forEach(([label, val]) => {
+        const cell = document.createElement('div');
+        const labelEl = document.createElement('span');
+        labelEl.className = 'label';
+        labelEl.textContent = label;
+        const valEl = document.createElement('span');
+        valEl.className = 'val';
+        valEl.textContent = val;
+        cell.appendChild(labelEl);
+        cell.appendChild(valEl);
+        grid.appendChild(cell);
+      });
+      item.appendChild(grid);
 
-      const statusTd = document.createElement('td');
+      const bottom = document.createElement('div');
+      bottom.className = 'ledger-item-bottom';
+
       const select = document.createElement('select');
       STATUS_OPTIONS.forEach(opt => {
         const o = document.createElement('option');
@@ -846,10 +960,18 @@
         select.appendChild(o);
       });
       select.addEventListener('change', () => updateStatus(entry.id, select.value));
-      statusTd.appendChild(select);
-      tr.appendChild(statusTd);
+      bottom.appendChild(select);
 
-      const delTd = document.createElement('td');
+      const rowActions = document.createElement('div');
+      rowActions.className = 'row-actions';
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'edit-btn';
+      editBtn.type = 'button';
+      editBtn.textContent = '✎ 編集';
+      editBtn.addEventListener('click', () => openEditPanel(entry));
+      rowActions.appendChild(editBtn);
+
       const delBtn = document.createElement('button');
       delBtn.className = 'delete-btn';
       delBtn.type = 'button';
@@ -857,16 +979,65 @@
       delBtn.addEventListener('click', () => {
         if (confirm(`「${entry.name}」を台帳から削除しますか？`)) removeEntry(entry.id);
       });
-      delTd.appendChild(delBtn);
-      tr.appendChild(delTd);
+      rowActions.appendChild(delBtn);
 
-      body.appendChild(tr);
+      bottom.appendChild(rowActions);
+      item.appendChild(bottom);
+
+      body.appendChild(item);
     });
 
     $('ledgerStockCount').textContent = stockCount;
     $('ledgerListedCount').textContent = listedCount;
     $('ledgerSoldProfit').textContent = yen(soldProfit);
   }
+
+  let editingId = null;
+
+  function highlightEditingRow() {
+    document.querySelectorAll('.ledger-item.editing').forEach(row => row.classList.remove('editing'));
+    if (editingId === null) return;
+    const row = document.querySelector(`.ledger-item[data-id="${editingId}"]`);
+    if (row) row.classList.add('editing');
+  }
+
+  function openEditPanel(entry) {
+    editingId = entry.id;
+    highlightEditingRow();
+
+    $('ledgerEditName').textContent = entry.name;
+    $('editName').value = entry.name;
+    $('editCostTotal').value = entry.costTotal;
+    $('editQty').value = entry.qty;
+    $('editSource').value = entry.source;
+    $('editPlatform').value = entry.platform;
+    $('editSellPrice').value = entry.sellPrice;
+    $('editProfit').value = entry.profit;
+
+    $('ledgerEditPanel').classList.add('active');
+    $('ledgerEditPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function closeEditPanel() {
+    editingId = null;
+    highlightEditingRow();
+    $('ledgerEditPanel').classList.remove('active');
+  }
+
+  $('editSaveBtn').addEventListener('click', () => {
+    if (editingId === null) return;
+    updateEntry(editingId, {
+      name: $('editName').value.trim() || '(商品名未設定)',
+      costTotal: parseFloat($('editCostTotal').value) || 0,
+      qty: Math.max(1, parseInt($('editQty').value) || 1),
+      source: $('editSource').value.trim(),
+      platform: $('editPlatform').value.trim(),
+      sellPrice: parseFloat($('editSellPrice').value) || 0,
+      profit: parseFloat($('editProfit').value) || 0
+    });
+    closeEditPanel();
+  });
+  $('editCancelBtn').addEventListener('click', closeEditPanel);
 
   $('addToLedgerBtn').addEventListener('click', () => {
     if (addToLedger()) switchTab('ledger');
