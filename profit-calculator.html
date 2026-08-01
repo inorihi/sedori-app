@@ -147,9 +147,51 @@
     gap: 10px;
   }
   .result-card {
-    position: sticky;
-    bottom: 12px;
     border-top: 3px solid var(--accent);
+    margin-bottom: 84px;
+  }
+  .mini-bar-wrap {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .mini-bar {
+    pointer-events: auto;
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--card-bg);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 10px rgba(16, 24, 40, .08);
+    padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .mini-bar .mini-amount {
+    flex: 1;
+    min-width: 0;
+  }
+  .mini-bar .mini-amount .label {
+    font-size: 11px;
+    color: var(--sub);
+  }
+  .mini-bar .mini-amount .amount {
+    font-size: 19px;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .mini-bar .mini-amount .amount.pos { color: var(--profit-pos); }
+  .mini-bar .mini-amount .amount.neg { color: var(--profit-neg); }
+  .mini-bar .btn {
+    width: auto;
+    flex-shrink: 0;
+    margin-top: 0;
+    white-space: nowrap;
   }
   .headline {
     text-align: center;
@@ -503,7 +545,16 @@
       <div class="breakdown-row"><span>▲ その他経費</span><span class="val neg" id="bdOther">¥0</span></div>
       <div class="breakdown-row total"><span>利益</span><span class="val" id="bdProfit">¥0</span></div>
     </div>
-    <button class="btn btn-primary" id="addToLedgerBtn" type="button">この内容を台帳に登録する</button>
+  </div>
+
+  <div class="mini-bar-wrap">
+    <div class="mini-bar">
+      <div class="mini-amount">
+        <div class="label">利益（<span id="miniQtyLabel">1</span>個）</div>
+        <div class="amount" id="miniProfitAmount">¥0</div>
+      </div>
+      <button class="btn btn-primary" id="addToLedgerBtn" type="button">台帳に登録</button>
+    </div>
   </div>
   </section>
 
@@ -627,10 +678,15 @@
     lastCalc = { costPrice, qty, acquireCost, sellPrice, costTotal, profit };
 
     $('qtyLabel').textContent = qty;
+    $('miniQtyLabel').textContent = qty;
 
     const amountEl = $('profitAmount');
     amountEl.textContent = yen(profit);
     amountEl.className = 'amount ' + (profit >= 0 ? 'pos' : 'neg');
+
+    const miniAmountEl = $('miniProfitAmount');
+    miniAmountEl.textContent = yen(profit);
+    miniAmountEl.className = 'amount ' + (profit >= 0 ? 'pos' : 'neg');
 
     $('profitRate').textContent = pct(profitRate);
     $('roi').textContent = pct(roi);
