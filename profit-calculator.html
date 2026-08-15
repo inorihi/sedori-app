@@ -755,6 +755,54 @@
     80% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
     100% { transform: translate(-50%, -50%) scale(1.1); opacity: 0; }
   }
+  .scan-btn { margin-bottom: 14px; }
+  .scanner-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgba(0, 0, 0, .92);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .scanner-overlay.active { display: flex; }
+  .scanner-box {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 3 / 4;
+    background: #000;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+  .scanner-box video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .scanner-frame {
+    position: absolute;
+    left: 10%;
+    right: 10%;
+    top: 38%;
+    bottom: 38%;
+    border: 3px solid var(--profit-pos);
+    border-radius: 10px;
+    box-shadow: 0 0 0 999px rgba(0, 0, 0, .35);
+  }
+  .scanner-hint {
+    color: #fff;
+    font-size: 13px;
+    text-align: center;
+    margin: 16px 0;
+    max-width: 320px;
+  }
+  .scanner-close-btn {
+    width: auto;
+    padding: 10px 24px;
+  }
   footer {
     text-align: center;
     color: var(--sub);
@@ -1017,6 +1065,7 @@
       </div>
       <button class="link-copy-btn" id="copyProductNameBtn" type="button">↑ 計算機の商品名をコピー</button>
     </div>
+    <button class="btn btn-secondary scan-btn" id="scanBarcodeBtn" type="button">📷 バーコードをスキャンして調べる</button>
     <div class="platform-links">
       <a class="platform-link amazon" id="linkAmazon" href="#" target="_blank" rel="noopener"><span class="icon">📦</span>Amazon</a>
       <a class="platform-link rakuten" id="linkRakuten" href="#" target="_blank" rel="noopener"><span class="icon">🛒</span>楽天市場</a>
@@ -1039,6 +1088,16 @@
 <div class="toast" id="toast"></div>
 <div id="fireworksOverlay"></div>
 
+<div class="scanner-overlay" id="scannerOverlay">
+  <div class="scanner-box">
+    <video id="scannerVideo" playsinline muted></video>
+    <div class="scanner-frame"></div>
+  </div>
+  <p class="scanner-hint" id="scannerHint">商品のバーコードを枠内に写してください</p>
+  <button class="btn btn-secondary scanner-close-btn" id="scannerCloseBtn" type="button">閉じる</button>
+</div>
+
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
 <script>
   const $ = (id) => document.getElementById(id);
   const platformEl = $('platform');
@@ -1709,6 +1768,58 @@
     $('researchKeyword').value = $('productName').value.trim();
     updateResearchLinks();
   });
+
+  // ---- バーコードスキャン ----
+  let barcodeReader = null;
+
+  function openScanner() {
+    if (typeof ZXing === 'undefined') {
+      alert('スキャン機能の読み込みに失敗しました。通信環境を確認して、もう一度お試しください。');
+      return;
+    }
+    $('scannerOverlay').classList.add('active');
+    $('scannerHint').textContent = 'カメラを起動しています…';
+
+    const hints = new Map();
+    hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [
+      ZXing.BarcodeFormat.EAN_13,
+      ZXing.BarcodeFormat.EAN_8,
+      ZXing.BarcodeFormat.UPC_A,
+      ZXing.BarcodeFormat.UPC_E,
+      ZXing.BarcodeFormat.CODE_128
+    ]);
+    barcodeReader = new ZXing.BrowserMultiFormatReader(hints);
+
+    barcodeReader.decodeFromConstraints(
+      { video: { facingMode: 'environment' } },
+      'scannerVideo',
+      (result) => {
+        if (result) {
+          const code = result.getText();
+          closeScanner();
+          $('researchKeyword').value = code;
+          updateResearchLinks();
+          showToast('📷 バーコードを読み取りました！');
+          searchRakuten();
+        }
+      }
+    ).then(() => {
+      $('scannerHint').textContent = '商品のバーコードを枠内に写してください';
+    }).catch(() => {
+      $('scannerHint').textContent = 'カメラを起動できませんでした。カメラの利用を許可しているか確認してください。';
+    });
+  }
+
+  function closeScanner() {
+    $('scannerOverlay').classList.remove('active');
+    if (barcodeReader) {
+      barcodeReader.reset();
+      barcodeReader = null;
+    }
+  }
+
+  $('scanBarcodeBtn').addEventListener('click', openScanner);
+  $('scannerCloseBtn').addEventListener('click', closeScanner);
 
   // ---- 楽天市場API連携 ----
   const RAKUTEN_APP_ID = '7d9b9ab8-5f6d-4f5f-8f13-485f74d9d3b9';
